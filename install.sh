@@ -80,6 +80,22 @@ fi
 install -m 0644 "$SRC/data/nitrosense.desktop" /usr/share/applications/nitrosense.desktop
 ln -sf /opt/nitrosense/bin/nitrosense /usr/local/bin/nitrosense
 
+echo "==> NitroSense key (scancode 0xf5 -> XF86Launch1 -> open NitroSense)"
+install -D -m 0644 "$SRC/data/61-nitrosense.hwdb" /etc/udev/hwdb.d/61-nitrosense.hwdb
+systemd-hwdb update
+udevadm trigger --sysname-match="event*" || true
+if [ -n "$USER_NAME" ] && [ "$USER_NAME" != "root" ]; then
+    USER_ID="$(id -u "$USER_NAME")"
+    if [ -S "/run/user/$USER_ID/bus" ]; then
+        runuser -u "$USER_NAME" -- env XDG_RUNTIME_DIR="/run/user/$USER_ID" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+            python3 -I -c 'import sys; sys.path.insert(0, "/opt/nitrosense"); from nitrosense.shortcut import main; sys.exit(main(["install"]))' \
+            || echo "    could not register the shortcut; run as your user: python3 -m nitrosense.shortcut install"
+    else
+        echo "    log in to the desktop and run: cd /opt/nitrosense && python3 -m nitrosense.shortcut install"
+    fi
+fi
+
 echo "==> Service"
 install -m 0644 "$SRC/data/nitrosensed.service" /etc/systemd/system/nitrosensed.service
 systemctl daemon-reload

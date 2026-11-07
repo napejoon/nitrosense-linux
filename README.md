@@ -20,6 +20,7 @@ suspend/resume and plugging or unplugging the charger, as they do on Windows.
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Using NitroSense](#using-nitrosense)
+- [NitroSense key](#nitrosense-key)
 - [How it works](#how-it-works)
 - [Firmware interface reference](#firmware-interface-reference)
 - [Files and configuration](#files-and-configuration)
@@ -76,6 +77,10 @@ suspend/resume and plugging or unplugging the charger, as they do on Windows.
 - **LCD Overdrive** (panel response-time boost).
 - **Backlight off after 30 seconds** (keyboard backlight timeout).
 - **Discrete GPU only**: appears only if the BIOS reports a GPU switch (not on AN515-44).
+
+### NitroSense key
+- The **NitroSense key** on the keyboard opens NitroSense, or brings it to the front if it is
+  already open, as on Windows.
 
 ### Service
 - Re-applies fan mode, CoolBoost, keyboard lighting, LCD Overdrive, the Win-key lock,
@@ -138,7 +143,9 @@ What the installer does:
 6. Copies your model's `Plugs/<model>/*.ini` to `/etc/nitrosense/model/`.
 7. Lets the user who ran `sudo` talk to the service.
 8. Installs the menu entry, the icon and the `nitrosense` command.
-9. Enables and starts the `nitrosensed` service.
+9. Sets up the **NitroSense key**: a udev hwdb rule remaps it to `XF86Launch1`, and a GNOME
+   keyboard shortcut for your user opens NitroSense with it (see [NitroSense key](#nitrosense-key)).
+10. Enables and starts the `nitrosensed` service.
 
 Then open **NitroSense** from the application menu, or run:
 
@@ -165,6 +172,33 @@ To update to a newer version, `git pull` and run the installer again. Your setti
 
 Closing the window only closes the GUI. The service keeps the fans and lighting as you
 left them.
+
+---
+
+## NitroSense key
+
+The key with the NitroSense logo sends AT scancode
+**0xf5**. Windows NitroSense's admin agent watches raw keyboard input for exactly this key
+(`RAWKEYBOARD.MakeCode == 0x75`, i.e. 0xf5 without the release bit) and starts the app.
+
+On Linux, systemd's keyboard database maps this scancode to `KEY_PRESENTATION` (keycode 425).
+X11 cannot deliver keycodes above 247, so the desktop never sees the key. The installer
+therefore:
+
+1. adds `/etc/udev/hwdb.d/61-nitrosense.hwdb`, which remaps scancode `f5` to `prog1`
+   (`XF86Launch1`) on Acer Nitro machines. systemd already does the same for the
+   Predator "PredatorSense" button.
+2. registers a GNOME custom shortcut *NitroSense*: `XF86Launch1` → `/opt/nitrosense/bin/nitrosense`.
+   You can see or change it in *Settings → Keyboard → Custom Shortcuts*.
+
+Other desktops (KDE, XFCE, …): bind the key `XF86Launch1` (shows as *Launch (1)*) to
+`/opt/nitrosense/bin/nitrosense` in that desktop's shortcut settings. To check what any key
+sends, run `sudo python3 -I tools/keyprobe.py 20` and press it.
+
+Re-register the GNOME shortcut manually (as your user):
+```bash
+cd /opt/nitrosense && python3 -m nitrosense.shortcut install   # or: remove / status
+```
 
 ---
 
@@ -275,6 +309,8 @@ dump to `tools/acpi-dump/`, which is git-ignored).
 | `~/.config/nitrosense/gui.json` | per-user GUI preferences (°C/°F, recent colours) |
 | `/etc/systemd/system/nitrosensed.service` | service unit |
 | `/etc/modules-load.d/nitrosense.conf` | loads `acpi_call` at boot |
+| `/etc/udev/hwdb.d/61-nitrosense.hwdb` | NitroSense key → `XF86Launch1` |
+| GNOME setting `custom-keybindings/nitrosense/` | shortcut: NitroSense key → open NitroSense |
 
 To let another user control the hardware:
 
@@ -359,6 +395,14 @@ transparent corners. Normal GNOME (X11 or Wayland) has it.
 with `acpi-cpufreq`), power-profiles-daemon has no *performance* profile. NitroSense
 still switches the governor to `performance`. Check with
 `cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`.
+
+**The NitroSense key does nothing**
+```bash
+systemd-hwdb query "evdev:atkbd:$(cat /sys/class/dmi/id/modalias)" | grep f5   # expect KEYBOARD_KEY_f5=prog1
+cd /opt/nitrosense && python3 -m nitrosense.shortcut status                    # expect XF86Launch1 -> ...
+```
+If the first line shows `presentation`, run `sudo systemd-hwdb update && sudo udevadm trigger
+--sysname-match="event*"`. If the shortcut is missing, run `python3 -m nitrosense.shortcut install`.
 
 **Debug logging**
 ```bash
@@ -467,6 +511,7 @@ Windows ทำโดยแกะจากตัวโปรแกรม Windows 
 - **Monitoring**: อุณหภูมิและโหลดของ CPU/GPU, รอบพัดลม, กราฟย้อนหลัง 12 นาที, ค่า Min/Max, เลือก °C หรือ °F
 - **Power Plan**: Power Saver / Balance / High-Performance ตั้งแยกกันตอนเสียบสายชาร์จและตอนใช้แบตเตอรี่ แล้วสลับให้อัตโนมัติ
 - **ไฟคีย์บอร์ด RGB 4 โซน**: Static (สีแยกโซน เปิดปิดทีละโซน ความสว่าง 1–5) และ Dynamic (Breathing, Wave, Zoom, Shifting, Neon พร้อมความเร็ว ทิศทาง และสี)
+- **ปุ่ม NitroSense บนคีย์บอร์ด**: กดแล้วเปิดโปรแกรมได้เหมือนบน Windows ถ้าเปิดอยู่แล้วจะดึงหน้าต่างขึ้นมาด้านหน้า
 - **ตั้งค่าอื่นๆ**: Sticky keys, ล็อกปุ่ม Windows, LCD Overdrive, ปิดไฟคีย์บอร์ดเมื่อไม่ได้ใช้ 30 วินาที
 - **จำค่าที่ตั้งไว้** แล้วตั้งกลับให้เองตอนเปิดเครื่อง ตอนตื่นจาก Sleep และตอนเสียบหรือถอดสายชาร์จ
 
@@ -494,6 +539,7 @@ Windows ทำโดยแกะจากตัวโปรแกรม Windows 
 ### แก้ปัญหาเบื้องต้น
 - ขึ้น *"NitroSense service is not running"* → `sudo systemctl restart nitrosensed` แล้วดู log ด้วย `journalctl -u nitrosensed -b`
 - ขึ้น *"acpi_call kernel module is not loaded"* → `sudo modprobe acpi_call` ถ้าไม่ผ่านให้เช็ก Secure Boot/MOK
+- กด**ปุ่ม NitroSense แล้วไม่มีอะไรเกิดขึ้น** → ดูหัวข้อ [NitroSense key](#nitrosense-key) (installer ตั้งค่าให้อัตโนมัติ: เปลี่ยน scancode `0xf5` เป็น `XF86Launch1` แล้วสร้าง shortcut ของ GNOME ไว้)
 - ขึ้น *"permission denied"* → `echo ชื่อผู้ใช้ | sudo tee -a /etc/nitrosense/allowed-users`
 
 ### ถอนการติดตั้ง

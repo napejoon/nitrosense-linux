@@ -20,6 +20,20 @@ systemctl disable --now nitrosensed.service 2>/dev/null || true
 if [ -d /opt/nitrosense ]; then
     python3 -I -c 'import sys; sys.path.insert(0, "/opt/nitrosense"); from nitrosense.power import restore_defaults; restore_defaults()' || true
 fi
+USER_NAME="${SUDO_USER:-}"
+if [ -n "$USER_NAME" ] && [ "$USER_NAME" != "root" ] && [ -d /opt/nitrosense ]; then
+    USER_ID="$(id -u "$USER_NAME")"
+    if [ -S "/run/user/$USER_ID/bus" ]; then
+        runuser -u "$USER_NAME" -- env XDG_RUNTIME_DIR="/run/user/$USER_ID" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+            python3 -I -c 'import sys; sys.path.insert(0, "/opt/nitrosense"); from nitrosense.shortcut import main; sys.exit(main(["remove"]))' || true
+    fi
+fi
+if [ -f /etc/udev/hwdb.d/61-nitrosense.hwdb ]; then
+    rm -f /etc/udev/hwdb.d/61-nitrosense.hwdb
+    systemd-hwdb update
+    udevadm trigger --sysname-match="event*" || true
+fi
 rm -f /etc/systemd/system/nitrosensed.service /etc/modules-load.d/nitrosense.conf
 rm -f /usr/share/applications/nitrosense.desktop /usr/local/bin/nitrosense
 rm -f /usr/share/icons/hicolor/256x256/apps/nitrosense.png

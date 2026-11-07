@@ -1,0 +1,6 @@
+# NitroSense for Linux: the NitroSense key sends AT scancode 0xf5 (Windows raw-input
+# MakeCode 0x75, which NitroSense's admin agent watches). systemd maps it to
+# KEY_PRESENTATION (425), which X11 cannot deliver (keycodes > 247), so map it to
+# prog1 (XF86Launch1) as systemd already does for the Predator "PredatorSense" button.
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pnNitro*:*
+ KEYBOARD_KEY_f5=prog1
