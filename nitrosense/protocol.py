@@ -22,7 +22,7 @@ def default_state(zone_colors: list[str] | None = None) -> dict:
             "zones_on": [True, True, True, True],
             "zone_colors": colors,
             "effect": "wave",
-            "speed": 5,
+            "speed": 3,  # NitroSense uses 5; users found that fast on the AN515-44
             "direction": 1,
             "effect_color": colors[0],
         },

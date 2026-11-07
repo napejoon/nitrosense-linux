@@ -61,13 +61,15 @@ class KeyboardView(Gtk.DrawingArea):
         self.effect = enc.EFFECT_WAVE
         self.effect_color = "#FF0000"
         self.rainbow_wave = True
+        self.speed = 3
         self.phase = 0.0
         self.set_draw_func(lambda _a, cr, w, h: self.draw(cr))
         self.add_tick_callback(self._tick)
 
     def _tick(self, _w, _clock) -> bool:
         if self.dynamic:
-            self.phase = (self.phase + 0.02) % 1.0
+            # follow the Speed slider: about 4 s per cycle at 1, under 1 s at 9
+            self.phase = (self.phase + 0.0015 + 0.0025 * self.speed) % 1.0
             self.queue_draw()
         return True
 
@@ -324,6 +326,7 @@ class LightingPanel(Gtk.Fixed):
         kv.colors, kv.enabled = list(kb["zone_colors"]), list(kb["zones_on"])
         kv.effect_color = kb.get("effect_color", "#FF0000")
         kv.rainbow_wave = not self.wave_color_enabled
+        kv.speed = kb.get("speed", 3)
         kv.queue_draw()
 
     def _changed(self) -> None:
