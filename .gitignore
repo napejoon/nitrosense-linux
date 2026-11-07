@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# firmware dumps from tools/collect-acpi.sh (machine specific, Acer firmware)
+tools/acpi-dump/
+# extracted NitroSense artwork (Acer copyright) - produced at install time only
+assets/
