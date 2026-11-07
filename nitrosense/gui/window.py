@@ -424,8 +424,9 @@ class MainWindow(Gtk.ApplicationWindow):
                    "sticky": self.sticky_settings is not None and "Sticky_Key" in m.keyboard,
                    "winkey": any(k.startswith("Windowskey") for k in m.keyboard),
                    "unit": "Temperature" in m.advanced,
-                   "overdrive": "LCD" in m.advanced,
-                   "backlight": "Backlight" in m.keyboard}
+                   "overdrive": "LCD" in m.advanced and bool(self.hw.get("lcd_overdrive_supported")),
+                   "backlight": "Backlight" in m.keyboard
+                   and bool(self.hw.get("backlight_timeout_supported"))}
         visible["kbtitle"] = visible["backlight"]
         y = 25
         for name, (box, _y, h) in self.settings_rows.items():
@@ -437,9 +438,10 @@ class MainWindow(Gtk.ApplicationWindow):
         self.settings.resize(y + 10)
 
     def _layout_settings_if_changed(self) -> None:
-        supported = bool(self.hw.get("gpu_mode_supported"))
-        if supported != self._dgpu_supported_seen:
-            self._dgpu_supported_seen = supported
+        flags = tuple(bool(self.hw.get(k)) for k in ("gpu_mode_supported", "lcd_overdrive_supported",
+                                                     "backlight_timeout_supported"))
+        if flags != self._dgpu_supported_seen:
+            self._dgpu_supported_seen = flags
             self._layout_settings()
 
     # =============================================== coolboost info popup

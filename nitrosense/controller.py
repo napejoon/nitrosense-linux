@@ -111,12 +111,14 @@ class Controller:
                 kb["effect"], kb["speed"], kb["brightness"], kb["direction"],
                 enc.parse_hex_color(kb["effect_color"]), self.adjust))
             return
-        # Static: brightness, per-zone colours, then zone on/off (Popup_Lighting)
+        # Static: brightness, then the four zone colours (Popup_Lighting). A switched-off
+        # zone is written as black: NitroSense's SetGamingLEDBehavior zone mask is
+        # rejected by the AN515-44 BIOS (status 2), while SetGamingRgbKb is verified.
         self._ok("SetGamingKBBacklight", enc.kb_static_backlight(kb["brightness"]))
         for zone in range(1, enc.KB_ZONES + 1):
+            color = kb["zone_colors"][zone - 1] if kb["zones_on"][zone - 1] else "#000000"
             self._ok("SetGamingRgbKb", enc.kb_zone_color(
-                zone, enc.parse_hex_color(kb["zone_colors"][zone - 1]), self.adjust))
-        self._ok("SetGamingLEDBehavior", enc.kb_zone_enable(tuple(kb["zones_on"])))
+                zone, enc.parse_hex_color(color), self.adjust))
 
     # ----------------------------------------------------------- helpers
     def _ok(self, method: str, value: int) -> int:

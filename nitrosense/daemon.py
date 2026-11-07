@@ -97,6 +97,17 @@ class Daemon:
         self.hw_coolboost = None
         self.hw_backlight_timeout = None
 
+    @property
+    def overdrive_supported(self) -> bool:
+        # Windows shows LCD Overdrive only with the factory flag LCD_Overdrive_support.
+        # On the AN515-44 panel the setting is accepted but never takes effect, so it is
+        # offered only when the firmware reports Overdrive as active.
+        return self.hw_lcd_overdrive is True
+
+    @property
+    def backlight_timeout_supported(self) -> bool:
+        return self.hw_backlight_timeout is not None
+
     # ------------------------------------------------------------ state
     def _load_state(self) -> dict:
         state = default_state(self.model.zone_default_colors)
@@ -156,9 +167,10 @@ class Daemon:
                  and self.ctl.set_coolboost(st["coolboost"])),
                 ("keyboard", lambda: st["keyboard_applied"] and self.ctl.apply_keyboard(st["keyboard"])),
                 ("lcd_overdrive", lambda: st["lcd_overdrive"] is not None
-                 and self.ctl.set_lcd_overdrive(st["lcd_overdrive"])),
+                 and self.overdrive_supported and self.ctl.set_lcd_overdrive(st["lcd_overdrive"])),
                 ("win_key", lambda: st["win_key"] is not None and self.ctl.set_win_key(st["win_key"])),
                 ("backlight_timeout", lambda: st["backlight_timeout"] is not None
+                 and self.backlight_timeout_supported
                  and self.ctl.set_backlight_timeout(st["backlight_timeout"])),
             ]
             for name, fn in steps:
@@ -206,7 +218,9 @@ class Daemon:
             return {"ok": True, "ready": self.ready, "error": self.error,
                     "sensors": self.sensors(), "state": st, "ac": power.ac_online(),
                     "hw": {"lcd_overdrive": self.hw_lcd_overdrive, "coolboost": self.hw_coolboost,
+                           "lcd_overdrive_supported": self.overdrive_supported,
                            "backlight_timeout": self.hw_backlight_timeout,
+                           "backlight_timeout_supported": self.backlight_timeout_supported,
                            "gpu_mode_supported": self.gpu_mode_supported,
                            "gpu_mode": self.gpu_mode}}
         if cmd == "set_power_plan":
@@ -271,6 +285,8 @@ class Daemon:
 
     def cmd_set_lcd_overdrive(self, req: dict) -> None:
         on = _bool(req.get("on"))
+        if not self.overdrive_supported:
+            raise ValidationError("LCD Overdrive is not supported by this panel")
         self.ctl.set_lcd_overdrive(on)
         self.hw_lcd_overdrive = on
         with self.lock:
@@ -286,6 +302,8 @@ class Daemon:
 
     def cmd_set_backlight_timeout(self, req: dict) -> None:
         on = _bool(req.get("on"))
+        if not self.backlight_timeout_supported:
+            raise ValidationError("the keyboard backlight timeout is not supported by this BIOS")
         self.ctl.set_backlight_timeout(on)
         self.hw_backlight_timeout = on
         with self.lock:

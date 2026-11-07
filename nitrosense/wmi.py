@@ -31,19 +31,22 @@ APGE_GUID = "61EF69EA-865C-4BC3-A502-A0DEBA0CB531"    # class APGeAction
 #   16 SetGamingFanSpeed -> EC CPUF/GPUF = buf[1] (0..100) for buf[0] = 1 / 4    (8-byte BHGK)
 #   20 SetGamingKBBacklight -> EC KBLE,KBLS,KBBP,KBCS,KBED,KBCR/G/B = buf[0..7]  (16-byte BHLK)
 #   1/3/14/22/23/24 are forwarded to SMM (WSMI); 14/22/23 match mainline acer-wmi,
-#   1 and 24 return the setter status buffer and 3/23 the getter buffer, as their names imply.
+#   1 returns the setter status buffer and 3/23 the getter buffer, as their names imply;
+#   1 is confirmed on hardware (Windows-key lock), 3 reports Overdrive byte 6 = 0xFF (unsupported).
+#   24 (assumed SetGamingLEDBehavior, zone on/off) answered status 2 on hardware -> not used.
 # APGeAction (\_SB.PCI0.WMID.WMAA) only implements 1 (SetFunction) and 2 (GetFunction).
 METHODS: dict[str, tuple[str, int, int]] = {
     "SetGamingProfile": (GAMING_GUID, 1, 8),
     "GetGamingProfile": (GAMING_GUID, 3, 4),
     "GetGamingSysInfo": (GAMING_GUID, 5, 4),
     "SetGamingRgbKb": (GAMING_GUID, 6, 4),
+    "GetGamingRgbKb": (GAMING_GUID, 7, 4),          # -> [status, R, G, B] of zone buf[0]
     "SetGamingFanBehavior": (GAMING_GUID, 14, 8),
     "SetGamingFanSpeed": (GAMING_GUID, 16, 8),
     "SetGamingKBBacklight": (GAMING_GUID, 20, 16),
+    "GetGamingKBBacklight": (GAMING_GUID, 21, 4),    # -> [status, mode, speed, bright, cs, dir, R, G, B]
     "SetGamingMiscSetting": (GAMING_GUID, 22, 8),
     "GetGamingMiscSetting": (GAMING_GUID, 23, 4),
-    "SetGamingLEDBehavior": (GAMING_GUID, 24, 8),
     "SetFunction": (APGE_GUID, 1, 8),
     "GetFunction": (APGE_GUID, 2, 4),
 }
@@ -134,7 +137,14 @@ class AcerWmi:
         return self._paths[guid]
 
     def call(self, name: str, value: int) -> int:
-        """Call a whitelisted method; returns the output as an integer (LE)."""
+        """Call a whitelisted method; returns the first 8 output bytes as an integer (LE)."""
+        result = self.call_bytes(name, value)
+        out = int.from_bytes(result[:8], "little")
+        log.debug("%s(%#x) -> %#x", name, value, out)
+        return out
+
+    def call_bytes(self, name: str, value: int) -> bytes:
+        """Call a whitelisted method; returns the complete output buffer."""
         guid, mid, size = METHODS[name]
         if value < 0 or value >= 1 << (8 * size):
             raise WmiError(f"{name}: input {value:#x} does not fit {size} bytes")
@@ -149,6 +159,6 @@ class AcerWmi:
             except OSError as e:
                 raise WmiError(f"{name}: acpi_call failed: {e}") from e
         result = parse_acpi_call_result(raw)
-        out = result if isinstance(result, int) else int.from_bytes(result[:8], "little")
-        log.debug("%s(%#x) -> %#x", name, value, out)
-        return out
+        if isinstance(result, int):
+            return result.to_bytes(8, "little")
+        return result

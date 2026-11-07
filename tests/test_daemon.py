@@ -47,11 +47,11 @@ class DaemonTests(unittest.TestCase):
     def test_keyboard_static_sequence(self):
         self.d.handle({"cmd": "set_keyboard", "keyboard": KB})
         names = [c[0] for c in self.wmi.calls]
-        self.assertEqual(names, ["SetGamingKBBacklight"] + ["SetGamingRgbKb"] * 4
-                         + ["SetGamingLEDBehavior"])
+        self.assertEqual(names, ["SetGamingKBBacklight"] + ["SetGamingRgbKb"] * 4)
         self.assertEqual(self.wmi.calls[0][1], enc.kb_static_backlight(4))
-        self.assertEqual(self.wmi.calls[2][1], enc.kb_zone_color(2, (0, 255, 0)))
-        self.assertEqual(self.wmi.calls[-1][1], enc.kb_zone_enable((True, False, True, True)))
+        # zone 2 is switched off -> written black; zone 3 keeps its colour
+        self.assertEqual(self.wmi.calls[2][1], enc.kb_zone_color(2, (0, 0, 0)))
+        self.assertEqual(self.wmi.calls[3][1], enc.kb_zone_color(3, (0, 0, 255)))
 
     def test_keyboard_validation(self):
         bad = dict(KB, brightness=9)
@@ -75,6 +75,14 @@ class DaemonTests(unittest.TestCase):
                                                 enc.fan_custom_behavior(False, False)))
         # CoolBoost is only re-applied in Auto mode (NitroSense disables it otherwise)
         self.assertNotIn(("SetFunction", enc.coolboost_set(True)), d2.ctl.wmi.calls)
+
+    def test_unsupported_features_rejected(self):
+        # fresh daemon: firmware reported neither Overdrive active nor a readable timeout
+        with self.assertRaises(dmod.ValidationError):
+            self.d.handle({"cmd": "set_lcd_overdrive", "on": True})
+        with self.assertRaises(dmod.ValidationError):
+            self.d.handle({"cmd": "set_backlight_timeout", "on": True})
+        self.assertEqual(self.wmi.calls, [])
 
     def test_power_plan(self):
         r = self.d.handle({"cmd": "set_power_plan", "source": "ac", "plan": "performance"})

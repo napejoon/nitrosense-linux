@@ -99,6 +99,7 @@ class KeyboardTests(unittest.TestCase):
         v = enc.kb_dynamic_backlight("wave", 9, 5, 2, (255, 255, 255))
         self.assertLess(v, 1 << (8 * METHODS["SetGamingKBBacklight"][2]))
         self.assertLess(enc.kb_zone_color(4, (255, 255, 255)), 1 << (8 * METHODS["SetGamingRgbKb"][2]))
+        self.assertNotIn("SetGamingLEDBehavior", METHODS)  # rejected by the BIOS, never called
 
 
 class AcpiCallParsing(unittest.TestCase):

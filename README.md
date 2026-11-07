@@ -74,8 +74,11 @@ suspend/resume and plugging or unplugging the charger, as they do on Windows.
 - **Sticky keys** (GNOME accessibility setting).
 - **Windows and menu key** (Super/Menu key lock, done in firmware).
 - **Temperature units** °C / °F.
-- **LCD Overdrive** (panel response-time boost).
-- **Backlight off after 30 seconds** (keyboard backlight timeout).
+- **LCD Overdrive** (panel response-time boost). Only shown when the panel supports it, as on
+  Windows (where it depends on the factory flag `LCD_Overdrive_support`). The AN515-44's panel
+  doesn't: the firmware accepts the command but the setting never takes effect.
+- **Backlight off after 30 seconds** (keyboard backlight timeout). Only shown when the BIOS
+  answers the request; the AN515-44 BIOS rejects it (`0xE2`).
 - **Discrete GPU only**: appears only if the BIOS reports a GPU switch (not on AN515-44).
 
 ### NitroSense key
@@ -268,7 +271,12 @@ WMI class **AcerGamingFunction**, GUID `7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56`, A
 | 16 | SetGamingFanSpeed | custom speed | `fan(1=CPU, 4=GPU) \| percent<<8` |
 | 20 | SetGamingKBBacklight | lighting effect | bytes: mode (0 static, 1 breathing, 2 neon, 3 wave, 4 shifting, 5 zoom), speed 1–9, brightness 0/25/50/75/100, 0x08 for wave, direction 1 right / 2 left, R, G, B |
 | 22 / 23 | Set/GetGamingMiscSetting | GPU switch (if supported) | get `9` → 3 = supported; set `0x02 \| (1 dGPU-only / 2 hybrid)<<8` |
-| 24 | SetGamingLEDBehavior | zone on/off | `0x08 \| zone1<<40 \| zone2<<41 \| zone3<<42 \| zone4<<43` |
+| 7 | GetGamingRgbKb | read zone colour | `zone(1/2/4/8)` → `[status, R, G, B]` |
+| 21 | GetGamingKBBacklight | read lighting state | → `[status, mode, speed, brightness, 0x08, direction, R, G, B]` |
+
+NitroSense switches zones on/off with `SetGamingLEDBehavior` (`0x08 | zone1<<40 | … | zone4<<43`).
+On the AN515-44 BIOS this call answers status 2 (rejected), so NitroSense for Linux turns a zone
+off by writing its colour as black through `SetGamingRgbKb`, which is verified in ACPI.
 
 WMI class **APGeAction**, GUID `61EF69EA-865C-4BC3-A502-A0DEBA0CB531`, ACPI `\_SB.PCI0.WMID.WMAA`:
 
@@ -282,13 +290,19 @@ status as an error and reports it in the GUI.
 
 On the AN515-44 (BIOS V1.04), IDs 5, 6, 7, 16, 17, 20 and 21 are implemented in ACPI
 (`SSDT5`) and were checked there directly. IDs 14, 22 and 23 match the mainline
-`acer-wmi` driver. The numbering of 1, 3 and 24 fits the same method table and the
-output-buffer shapes in the DSDT. If your BIOS differs, override the numbers in
+`acer-wmi` driver. ID 1 (forwarded to the BIOS via SMI) is confirmed on hardware: the
+Windows-key lock works through it. ID 3 answers Overdrive with `0xFF` in byte 6, which this
+firmware uses for "not supported". If your BIOS differs, override the numbers in
 `/etc/nitrosense/wmi.json`:
 
 ```json
-{ "methods": { "SetGamingLEDBehavior": { "id": 24, "size": 8 } } }
+{ "methods": { "SetGamingProfile": { "id": 1, "size": 8 } } }
 ```
+
+Hardware test on AN515-44 (12/12 pass): zone colours and order, zone on/off, brightness 1–5,
+Breathing, Wave in both directions, Neon, Shifting, Zoom and the Windows-key lock, plus fan
+modes and sensors. `tools/kbtest.py` (no sudo) walks through every lighting mode and
+the Windows-key lock through the running service and asks you to confirm what you see.
 
 To inspect your own tables: `sudo bash tools/collect-acpi.sh` (read-only; writes the
 dump to `tools/acpi-dump/`, which is git-ignored).
@@ -396,6 +410,11 @@ with `acpi-cpufreq`), power-profiles-daemon has no *performance* profile. NitroS
 still switches the governor to `performance`. Check with
 `cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor`.
 
+**Keyboard lighting doesn't seem to change**: the laptop keyboard switches its backlight off
+after a while without keystrokes on *it* (typing on an external keyboard doesn't count).
+Press any key on the laptop keyboard and look again. `python3 -I tools/kbtest.py` tests every
+mode step by step.
+
 **The NitroSense key does nothing**
 ```bash
 systemd-hwdb query "evdev:atkbd:$(cat /sys/class/dmi/id/modalias)" | grep f5   # expect KEYBOARD_KEY_f5=prog1
@@ -494,8 +513,10 @@ temperatures drift), so every screen can be exercised without root.
 - **Keyboard preview** in the lighting panel is drawn by this app; it shows the 4 zones
   and an animated preview of the effect.
 - **UI language**: English. NitroSense ships no Thai translation.
-- **WMI IDs 1, 3 and 24** are inferred from the method table and ACPI output shapes, not
-  read from the decompressed WMI MOF. Use `wmi.json` if your BIOS differs.
+- **Zone on/off** is done by writing the zone black, because the AN515-44 BIOS rejects
+  NitroSense's zone-mask call. The visible result is the same.
+- **LCD Overdrive** and **backlight off after 30 seconds** are not available on the AN515-44
+  and are hidden there.
 
 ---
 
@@ -540,6 +561,8 @@ Windows ทำโดยแกะจากตัวโปรแกรม Windows 
 - ขึ้น *"NitroSense service is not running"* → `sudo systemctl restart nitrosensed` แล้วดู log ด้วย `journalctl -u nitrosensed -b`
 - ขึ้น *"acpi_call kernel module is not loaded"* → `sudo modprobe acpi_call` ถ้าไม่ผ่านให้เช็ก Secure Boot/MOK
 - กด**ปุ่ม NitroSense แล้วไม่มีอะไรเกิดขึ้น** → ดูหัวข้อ [NitroSense key](#nitrosense-key) (installer ตั้งค่าให้อัตโนมัติ: เปลี่ยน scancode `0xf5` เป็น `XF86Launch1` แล้วสร้าง shortcut ของ GNOME ไว้)
+- **ตั้งไฟคีย์บอร์ดแล้วดูเหมือนไม่เปลี่ยน** → ไฟคีย์บอร์ดของโน้ตบุ๊กจะดับเองถ้าไม่ได้กดคีย์บอร์ด*ตัวเครื่อง*สักพัก (พิมพ์จากคีย์บอร์ดภายนอกไม่นับ) ให้กดปุ่มอะไรก็ได้บนคีย์บอร์ดโน้ตบุ๊กแล้วดูใหม่ หรือรัน `python3 -I tools/kbtest.py` เพื่อทดสอบทีละโหมด
+- LCD Overdrive และ "ปิดไฟคีย์บอร์ดหลัง 30 วินาที" ไม่มีบน AN515-44 (จอ/BIOS ไม่รองรับ) โปรแกรมจึงซ่อนตัวเลือกนี้ไว้ เหมือนบน Windows
 - ขึ้น *"permission denied"* → `echo ชื่อผู้ใช้ | sudo tee -a /etc/nitrosense/allowed-users`
 
 ### ถอนการติดตั้ง
