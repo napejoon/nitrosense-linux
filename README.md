@@ -323,6 +323,8 @@ dump to `tools/acpi-dump/`, which is git-ignored).
 | `~/.config/nitrosense/gui.json` | per-user GUI preferences (°C/°F, recent colours) |
 | `/etc/systemd/system/nitrosensed.service` | service unit |
 | `/etc/modules-load.d/nitrosense.conf` | loads `acpi_call` at boot |
+| `/usr/share/applications/io.github.napejoon.NitroSense.desktop` | menu entry (app ID `io.github.napejoon.NitroSense`) |
+| `/usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg` | app icon |
 | `/etc/udev/hwdb.d/61-nitrosense.hwdb` | NitroSense key → `XF86Launch1` |
 | GNOME setting `custom-keybindings/nitrosense/` | shortcut: NitroSense key → open NitroSense |
 
@@ -578,7 +580,8 @@ sudo ./uninstall.sh
 Unofficial project, not affiliated with or endorsed by Acer. "Acer", "Nitro",
 "NitroSense" and "CoolBoost" are trademarks of Acer Inc. This repository contains
 no Acer code, firmware or artwork; the installer reads the artwork from the
-NitroSense package you downloaded yourself. Changing fan and firmware settings is
+NitroSense package you downloaded yourself. The app icon
+(`data/icons/io.github.napejoon.NitroSense.svg`) is original artwork made for this project. Changing fan and firmware settings is
 at your own risk.
 
 ## License

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=NitroSense
+GenericName=Laptop Control Center
+Comment=Acer Nitro fan control, keyboard lighting, power plan and monitoring
+Exec=/opt/nitrosense/bin/nitrosense
+Icon=io.github.napejoon.NitroSense
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=acer;nitro;nitrosense;fan;rgb;keyboard;temperature;power;
+StartupNotify=true
+StartupWMClass=nitrosense

@@ -72,12 +72,14 @@ if [ -n "$USER_NAME" ] && [ "$USER_NAME" != "root" ]; then
 fi
 
 echo "==> Icon and menu entry"
-ICON_SRC="/usr/share/nitrosense/assets/icon.png"
-if [ -f "$ICON_SRC" ]; then
-    install -D -m 0644 "$ICON_SRC" /usr/share/icons/hicolor/256x256/apps/nitrosense.png
-    gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
-fi
-install -m 0644 "$SRC/data/nitrosense.desktop" /usr/share/applications/nitrosense.desktop
+rm -f /usr/share/applications/nitrosense.desktop \
+      /usr/share/icons/hicolor/256x256/apps/nitrosense.png   # names used by older versions
+install -D -m 0644 "$SRC/data/icons/io.github.napejoon.NitroSense.svg" \
+    /usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg
+gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+install -D -m 0644 "$SRC/data/io.github.napejoon.NitroSense.desktop" \
+    /usr/share/applications/io.github.napejoon.NitroSense.desktop
+update-desktop-database -q /usr/share/applications 2>/dev/null || true
 ln -sf /opt/nitrosense/bin/nitrosense /usr/local/bin/nitrosense
 
 echo "==> NitroSense key (scancode 0xf5 -> XF86Launch1 -> open NitroSense)"

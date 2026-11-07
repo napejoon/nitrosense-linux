@@ -23,6 +23,7 @@ import time
 
 from . import encoders as enc
 from . import model as model_cfg
+from . import set_process_name
 from . import power
 from .controller import Controller, wait_for_acpi_call
 from .protocol import (ALLOWED_USERS_FILE, MAX_REQUEST, SOCKET_DIR, SOCKET_PATH,
@@ -405,6 +406,7 @@ def main() -> int:
     if os.geteuid() != 0:
         print("nitrosensed must run as root", file=sys.stderr)
         return 1
+    set_process_name("nitrosensed")
 
     import gi
     gi.require_version("Gio", "2.0")

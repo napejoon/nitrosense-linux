@@ -13,6 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
+from .. import APP_ID, set_process_name  # noqa: E402
 from .. import model as model_cfg  # noqa: E402
 from ..client import Client, DaemonError  # noqa: E402
 from ..protocol import default_state  # noqa: E402
@@ -151,7 +152,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_decorated(False)
         self.set_resizable(False)
         self.set_default_size(1320, 760)
-        self.set_icon_name("nitrosense")
+        self.set_icon_name(APP_ID)
 
         provider = Gtk.CssProvider()
         provider.load_from_string(CSS)
@@ -818,8 +819,7 @@ def _text_width(widget: Gtk.Widget, text: str, size: float) -> int:
 
 class App(Gtk.Application):
     def __init__(self) -> None:
-        super().__init__(application_id="local.nitrosense.NitroSense",
-                         flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
 
     def do_activate(self) -> None:
         win = self.get_active_window()
@@ -829,4 +829,10 @@ class App(Gtk.Application):
 
 
 def main() -> int:
+    # Without these GNOME shows the window as "python3" with a generic icon: the
+    # program name (WM_CLASS) would come from the interpreter.
+    set_process_name("nitrosense")
+    GLib.set_prgname("nitrosense")
+    GLib.set_application_name("NitroSense")
+    Gtk.Window.set_default_icon_name(APP_ID)
     return App().run(None)
