@@ -39,6 +39,7 @@ rm -f /usr/share/applications/nitrosense.desktop /usr/local/bin/nitrosense
 rm -f /usr/share/applications/io.github.napejoon.NitroSense.desktop
 rm -f /usr/share/icons/hicolor/256x256/apps/nitrosense.png
 rm -f /usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg
+rm -f /usr/share/icons/hicolor/*/apps/io.github.napejoon.NitroSense.png
 gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
 update-desktop-database -q /usr/share/applications 2>/dev/null || true
 rm -rf /opt/nitrosense /usr/share/nitrosense /var/lib/nitrosense /etc/nitrosense

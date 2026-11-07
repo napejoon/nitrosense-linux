@@ -74,8 +74,16 @@ fi
 echo "==> Icon and menu entry"
 rm -f /usr/share/applications/nitrosense.desktop \
       /usr/share/icons/hicolor/256x256/apps/nitrosense.png   # names used by older versions
-install -D -m 0644 "$SRC/data/icons/io.github.napejoon.NitroSense.svg" \
-    /usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg
+# The icon is NitroSense's own keycap tile from your package, with the N lit red like the
+# backlit NitroSense key; without a tile, the project's own SVG icon is used.
+ICON_TILE=/usr/share/nitrosense/assets/icon.png
+if [ -f "$ICON_TILE" ] && (cd /opt/nitrosense && python3 -I -c 'import sys; sys.path.insert(0, "."); from nitrosense.iconmaker import main; sys.exit(main(sys.argv[1:]))' \
+        "$ICON_TILE" /usr/share/icons/hicolor); then
+    rm -f /usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg
+else
+    install -D -m 0644 "$SRC/data/icons/io.github.napejoon.NitroSense.svg" \
+        /usr/share/icons/hicolor/scalable/apps/io.github.napejoon.NitroSense.svg
+fi
 gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
 install -D -m 0644 "$SRC/data/io.github.napejoon.NitroSense.desktop" \
     /usr/share/applications/io.github.napejoon.NitroSense.desktop
