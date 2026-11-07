@@ -67,3 +67,8 @@ Unofficial project, not affiliated with or endorsed by Acer. "Acer", "Nitro",
 no Acer code, firmware or artwork; the installer reads the artwork from the
 NitroSense package you downloaded yourself. Tested on a Nitro AN515-44
 (BIOS V1.04, Ubuntu 24.04, kernel 7.0). Use at your own risk.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The license covers this repository's code only; the
+NitroSense artwork the installer extracts stays Acer's and is not redistributed.
